@@ -917,8 +917,20 @@ void t_cocoa_generator::generate_cocoa_struct_implementation(ofstream& out,
                                                              t_struct* tstruct,
                                                              bool is_exception,
                                                              bool is_result) {
-  indent(out) << "@implementation " << cocoa_prefix_ << tstruct->get_name() << endl << endl;
+  indent(out) << "@implementation " << cocoa_prefix_ << tstruct->get_name();
+  
+  // implementation ivars
+  // starting from iOS 11 _code is private ivar
+  // redeclarate to public
+  if (is_exception) {
+    indent(out) << " {" << endl;
+    indent(out) << indent() << " @public" << endl;
+    indent(out) << indent() << " NSInteger _code;" << endl;
+    indent(out) << "}";
+  }
 
+  indent(out) << endl << endl;
+  
   const vector<t_field*>& members = tstruct->get_members();
   vector<t_field*>::const_iterator m_iter;
 
@@ -2596,19 +2608,21 @@ string t_cocoa_generator::type_name(t_type* ttype, bool class_ref, bool needs_mu
   if (ttype->is_base_type()) {
     return base_type_name((t_base_type*)ttype);
   } else if (ttype->is_enum()) {
-    return cocoa_prefix_ + ttype->get_name();
+//    return cocoa_prefix_ + ttype->get_name();
+      return "int";
   } else if (ttype->is_map()) {
     t_map *map = (t_map *)ttype;
     result = needs_mutable ? "NSMutableDictionary" : "NSDictionary";
-    result += "<" + element_type_name(map->get_key_type()) + ", " + element_type_name(map->get_val_type()) + ">";
+//    result += "<" + element_type_name(map->get_key_type()) + ", " + element_type_name(map->get_val_type()) + ">";
+      
   } else if (ttype->is_set()) {
     t_set *set = (t_set *)ttype;
     result = needs_mutable ? "NSMutableSet" : "NSSet";
-    result += "<" + element_type_name(set->get_elem_type()) + ">";
+//    result += "<" + element_type_name(set->get_elem_type()) + ">";
   } else if (ttype->is_list()) {
     t_list *list = (t_list *)ttype;
     result = needs_mutable ? "NSMutableArray" : "NSArray";
-    result += "<" + element_type_name(list->get_elem_type()) + ">";
+//    result += "<" + element_type_name(list->get_elem_type()) + ">";
   } else {
     // Check for prefix
     t_program* program = ttype->get_program();
@@ -2762,15 +2776,17 @@ void t_cocoa_generator::print_const_value(ostream& out,
     map<t_const_value*, t_const_value*>::const_iterator v_iter;
     if (defval)
       mapout << type_name(type) << " ";
-    mapout << name << " = @{";
-    for (v_iter = val.begin(); v_iter != val.end();) {
-      mapout << render_const_value(out, ktype, v_iter->first, true) << ": "
-          << render_const_value(out, vtype, v_iter->second, true);
-      if (++v_iter != val.end()) {
-        mapout << ", ";
-      }
-    }
-    mapout << "}";
+    // mapout << name << " = @{";
+    // for (v_iter = val.begin(); v_iter != val.end();) {
+    //   mapout << render_const_value(out, ktype, v_iter->first, true) << ": "
+    //       << render_const_value(out, vtype, v_iter->second, true);
+    //   if (++v_iter != val.end()) {
+    //     mapout << ", ";
+    //   }
+    // }
+    // mapout << "}";
+    // out << mapout.str();
+    mapout << name << " = [NSMutableDictionary dictionary];";
     out << mapout.str();
   } else if (type->is_list()) {
     ostringstream listout;
@@ -3040,7 +3056,8 @@ string t_cocoa_generator::declare_property(t_field* tfield) {
  * @param tfield The field to declare a property for
  */
 string t_cocoa_generator::declare_property_isset(t_field* tfield) {
-  return "@property (assign, nonatomic) BOOL " + decapitalize(tfield->get_name()) + "IsSet;";
+  // return "@property (assign, nonatomic) BOOL " + decapitalize(tfield->get_name()) + "IsSet;";
+  return "@property (assign, nonatomic) BOOL " + tfield->get_name() + "IsSet;";
 }
 
 /**
